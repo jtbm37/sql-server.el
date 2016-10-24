@@ -120,9 +120,12 @@ machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
   (interactive "r")
   (sql-server-send (buffer-substring-no-properties start end)))
 
-(defun sql-server-send (sql)
-  "Sends sql to server"
+(defun sql-server-send (sql &optional nocount)
+  "Sends string `sql' to server.
+When `nocount' is t, the last line with the row count is excluded."
   (let ((result (sql-server-get-result-list (sql-server-sanitize-query sql))))
+    (when nocount
+      (setq result (-drop-last 1 result)))
     (cond ((not (seq-empty-p result))
            (let (buffer window)
              (save-excursion (setq buffer (ctbl:create-table-buffer-easy
