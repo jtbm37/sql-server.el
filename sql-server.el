@@ -92,18 +92,20 @@ Command is to `isql DB username password'"
 Add the following entry to your `.authinfo' file:
 machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
 "
+  (interactive)
   (-if-let* ((entry (nth 0 (auth-source-search :max 1 :host "sqllocal")))
          (login (plist-get entry :user))
          (db (plist-get entry :db))
          (secretfun (plist-get entry :secret))
          (secret (funcall secretfun)))
-    (setq sql-user login
-          sql-password secret
-          sql-database db
-          sql-server db
-          sql-send-terminator t
-          sql-product 'ms)
-    (error "Credentials not found")))
+      (progn (setq sql-user login
+                   sql-password secret
+                   sql-database db
+                   sql-server db
+                   sql-send-terminator t
+                   sql-product 'ms)
+             (message "Sql-server defaults set"))
+    (user-error "Credentials not found")))
 
 (defun sql-server-get-table-at-point (start end)
   (interactive "r")
