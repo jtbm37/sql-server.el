@@ -113,7 +113,7 @@ machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
 
 (defun sql-server-get-table-columns (table)
   "Returns the list of columns for `table'"
-  (sql-server-send (format sql-server-ivy-table-columns-query table)))
+  (sql-server-send (format sql-server-ivy-table-columns-query table) t))
 
 (defun sql-server-send-region (start end)
   "Send a region to the SQL process."
