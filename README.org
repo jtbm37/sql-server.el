@@ -1,0 +1,14 @@
+[[https://img.shields.io/badge/License-GPL%20v3-blue.svg]]
+#+TITLE: sql-server.el
+Emacs package for an alternative to SQL Server Management Studio.
+
+* Configuration
+** Displaying sql buffer at the bottom
+   #+BEGIN_SRC elisp
+   (setq purpose-display-at-bottom-height 30)
+   (add-to-list 'purpose-special-action-sequences
+              '(sql-table
+               	purpose-display-reuse-window-purpose
+               	purpose-display-at-bottom))
+   
+   #+END_SRC
