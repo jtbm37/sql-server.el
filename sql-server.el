@@ -126,12 +126,9 @@ When `nocount' is t, the last line with the row count is excluded."
     (when nocount
       (setq result (-drop-last 1 result)))
     (cond ((not (seq-empty-p result))
-           (let (buffer window)
-             (save-excursion (setq buffer (ctbl:create-table-buffer-easy
-                                           (cdr result)
-                                           (car result))))
-             (select-window (display-buffer-at-bottom buffer nil) nil)
-             ))
+           (switch-to-buffer (ctbl:create-table-buffer-easy
+			      (cdr result)
+			      (car result))))
           (t (user-error "SQL empty")))))
 
 (defun sql-server-sanitize-query (sql)
