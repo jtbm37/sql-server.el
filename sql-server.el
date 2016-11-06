@@ -72,9 +72,6 @@ Command is to `isql DB username password'"
 
 (advice-add 'sql-send-region :override #'sql-server-send-region)
 
-(spacemacs/set-leader-keys-for-major-mode 'sql-mode
-  "d" 'sql-server-set-defaults)
-
 (sql-set-product-feature 'ms :sqli-program "isql")
 ;; nil will not ask for any input from user and get the defaults
 (sql-set-product-feature 'ms :sqli-login nil)
