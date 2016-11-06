@@ -4,11 +4,14 @@ Emacs package for an alternative to SQL Server Management Studio.
 
 * Configuration
 ** Displaying sql buffer at the bottom
+   Use =emacs-purpose= to always open the results at the bottom. You can trust it to always display the results
+   in the same window.
    #+BEGIN_SRC elisp
+   (add-to-list 'purpose-user-mode-purposes '(ctbl:table-mode . sql-table))
    (setq purpose-display-at-bottom-height 30)
    (add-to-list 'purpose-special-action-sequences
-              '(sql-table
-               	purpose-display-reuse-window-purpose
-               	purpose-display-at-bottom))
+	      '(sql-table
+		purpose-display-reuse-window-purpose
+		purpose-display-at-bottom))
    
    #+END_SRC
