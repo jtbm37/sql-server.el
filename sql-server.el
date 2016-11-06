@@ -5,8 +5,8 @@
 ;; Author: jtbm37
 ;; URL: https://github.com/jtbm37/sql-server.el
 ;; Version: 0.0.0
-;; Package-Requires: ((emacs "24.3") (swiper "0.8.0") (ctable "0.1.2"))
-;; Keywords:
+;; Package-Requires: ((emacs "24.3") (swiper "0.8.0") (ctable "0.1.2") (s "1.10.0"))
+;; Keywords: sql
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -33,6 +33,8 @@
 ;; used against production sql server.
 
 ;;; Code:
+(require 's)
+(require 'ctable)
 
 (defconst sql-server-temp-buffer " *TEMP SQL*")
 
