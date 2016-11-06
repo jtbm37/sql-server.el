@@ -163,9 +163,7 @@ When `nocount' is t, the last line with the row count is excluded."
 		    (dolist (idx guid-cols)
 		      (let* ((guid (nthcdr idx line))
 			     (val (car guid)))
-			(message "guid %s" guid)
 			(when (eq (length val) 32)
-			  (message "ok")
 			  (setcar guid (format
 					"%s-%s-%s-%s-%s"
 					(concat
