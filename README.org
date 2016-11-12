@@ -2,6 +2,8 @@
 #+TITLE: sql-server.el
 Emacs package for an alternative to SQL Server Management Studio.
 
+=Warning= This is a work in progress. =DO NOT USE= for real production work.
+
 * Configuration
 ** Displaying sql buffer at the bottom
    Use =emacs-purpose= to always open the results at the bottom. You can trust it to always display the results
