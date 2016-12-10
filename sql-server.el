@@ -147,42 +147,9 @@ When `nocount' is t, the last line with the row count is excluded."
   "Returns the result of the query in a list"
   (unless (s-contains? "*Minibuf" (format "%s" (current-buffer)))
     (message "Sending query: %s" sql))
-  (let ((raw-lines (sql-server-get-result-lines sql))
-	(guid-cols '()))
-    ;; TODO Refactor the guid hacking formatting
-    (when (and raw-lines (> (length raw-lines) 1))
-      (let ((first-line (split-string (cadr raw-lines) "|"))
-	    (i 0))
-	(dolist (col first-line)
-	  (when (eq 32 (length col))
-	    (push i guid-cols))
-	  (setq i (1+ i)))))
+  (let ((raw-lines (sql-server-get-result-lines sql)))
     (mapcar (lambda (x)
-	      (if (> (length guid-cols) 0)
-		  (let ((line (split-string x "|")))
-		    (dolist (idx guid-cols)
-		      (let* ((guid (nthcdr idx line))
-			     (val (car guid)))
-			(message "guid %s" guid)
-			(when (eq (length val) 32)
-			  (message "ok")
-			  (setcar guid (format
-					"%s-%s-%s-%s-%s"
-					(concat
-					 (substring val 6 8)
-					 (substring val 4 6)
-					 (substring val 2 4)
-					 (substring val 0 2))
-					(concat
-					 (substring val 10 12)
-					 (substring val 8 10))
-					(concat
-					 (substring val 14 16)
-					 (substring val 12 14))
-					(substring val 16 20)
-					(substring val 20 32))))))
-		    line)
-		(split-string x "|")))
+              (split-string x "|"))
             raw-lines)))
 
 (defun sql-server-get-result-lines (sql)
