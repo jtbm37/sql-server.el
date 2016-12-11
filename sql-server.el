@@ -159,24 +159,21 @@ machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
 
 (defun sql-server-get-table-columns (table)
   "Returns the list of columns for `table'"
-  (sql-server-send (format sql-server-ivy-table-columns-query table) t))
+  (sql-server-send (format sql-server-ivy-table-columns-query table)))
 
 (defun sql-server-send-region (start end)
   "Send a region to the SQL process."
   (interactive "r")
   (sql-server-send (buffer-substring-no-properties start end)))
 
-(defun sql-server-send (sql &optional nocount)
+(defun sql-server-send (sql)
   "Sends string `sql' to server.
 When `nocount' is t, the last line with the row count is excluded."
   (let ((result (sql-server-get-result-list (sql-server-sanitize-query sql))))
-    (when nocount
-      (setq result (-drop-last 1 result)))
-    (cond ((not (seq-empty-p result))
-           (save-excursion (switch-to-buffer (ctbl:create-table-buffer-easy
-			       (cdr result)
-			       (car result)))))
-          (t (user-error "SQL empty")))))
+    (when (> (length result) 1)
+      (save-excursion (switch-to-buffer (ctbl:create-table-buffer-easy
+					 (cdr result)
+					 (car result)))))))
 
 (defun sql-server-sanitize-query (sql)
   ;; Remove empty lines as they cause additional prompt added to the result buffer
@@ -193,6 +190,10 @@ When `nocount' is t, the last line with the row count is excluded."
   )
 
 (defun sql-server--execute-query (sql)
+  "Returns a list with 3 elements:
+- the beginning point of the result
+- the end point of the result
+- the result count"
   (let ((process (get-buffer-process sql-server-temp-buffer)))
     ;; (when (string-match "\\(.*\\);[ \t]*" sql) (setq sql (match-string 1 sql)))
     (with-current-buffer (process-buffer process)
@@ -203,7 +204,8 @@ When `nocount' is t, the last line with the row count is excluded."
 	    (error-msg-regexp "Msg [0-9]+, Level [0-9]+, State [0-9]+, Server .+, Line [0-9]+
 \\(.*\\)$")
 	    (end-flg-regexp "1> ")
-	    end)
+	    end
+	    (count 0))
 	(goto-char (point-max))
 	(process-send-string process (format "%s ;\n" sql))
 	(process-send-string process "go\n")
@@ -213,22 +215,26 @@ When `nocount' is t, the last line with the row count is excluded."
 	    (goto-char (+ 3 (point-min)))))
 	;; find the starting point of the query result which is everything before `row-changed-regexp'
 	(if (re-search-forward row-changed-regexp nil t -1)
-	    (setq end (max start (1- (match-beginning 0))))
+	    (progn
+	      (setq count (string-to-number (match-string 1)))
+	      (setq end (max start (1- (match-beginning 0)))))
 	  ;; an error occurred let's find the error message
 	  (if (re-search-forward error-msg-regexp nil t -1)
 	      (user-error "Query failed: %s" (match-string 1))
-	      (user-error "Query failed")))
-	;; (message "Count %s" (match-string 1))
-	(buffer-substring-no-properties start end)))))
+	    (user-error "Query failed")))
+	(list start end count)))))
 
 (defun sql-server-get-result-list (sql)
   "Returns the result of the query in a list"
   (unless (s-contains? "*Minibuf" (format "%s" (current-buffer)))
     (message "Sending query: %s" sql))
-  (let ((raw-result (sql-server--execute-query sql))
+  (let* ((query-result (sql-server--execute-query sql))
+	 (result-beg (car query-result))
+	 (result-end (cadr query-result))
+	 (result-count (caddr query-result))
 	result row line-count)
     (with-temp-buffer
-      (insert raw-result)
+      (insert-buffer-substring-no-properties sql-server-temp-buffer result-beg result-end)
       (setq line-count (count-lines (point-min) (point-max)))
       (goto-char (point-min))
       (when (> line-count 1)
@@ -239,6 +245,10 @@ When `nocount' is t, the last line with the row count is excluded."
 	  (forward-line))))
     (when (and result (> (length result) 1))
       (setcdr result (cddr result)))
+    (cond ((and result-count (< (length result) 2) (eq 0 result-count))
+	   (message "No record found"))
+	  ((and result-count (< (length result) 2) (> result-count 0))
+	   (message "%s rows affected" count)))
     result)
   ;; (let ((raw-lines (sql-server-get-result-lines sql)))
   ;;   (mapcar (lambda (x)
