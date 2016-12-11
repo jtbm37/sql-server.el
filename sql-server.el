@@ -179,7 +179,8 @@ When `nocount' is t, the last line with the row count is excluded."
           (t (user-error "SQL empty")))))
 
 (defun sql-server-sanitize-query (sql)
-  ;; Remove the GO statements and replace them with ';'
+  ;; Remove empty lines as they cause additional prompt added to the result buffer
+  (replace-regexp-in-string "\n" " " sql)
   ;; (let ((sql-fixed (s-trim
   ;;                   (replace-regexp-in-string "\n" " "
   ;;                                             ;;remove GOs'
@@ -189,7 +190,7 @@ When `nocount' is t, the last line with the row count is excluded."
   ;;   (unless (s-suffix? ";" sql-fixed)
   ;;     (setq sql-fixed (concat sql-fixed ";")))
   ;;   sql-fixed)
-  sql)
+  )
 
 (defun sql-server--execute-query (sql)
   (let ((process (get-buffer-process sql-server-temp-buffer)))
