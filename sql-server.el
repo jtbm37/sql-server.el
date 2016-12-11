@@ -198,16 +198,25 @@ When `nocount' is t, the last line with the row count is excluded."
       (delete-region (point-min) (point-max))
       ;; We add 3 here to exclude the prompt from the result
       (let ((start (+ 3 (point-min)))
-	    (end-flg-regexp "(\\([0-9]+\\) rows affected)")
+	    (row-changed-regexp "(\\([0-9]+\\) rows affected)")
+	    (error-msg-regexp "Msg [0-9]+, Level [0-9]+, State [0-9]+, Server .+, Line [0-9]+
+\\(.*\\)$")
+	    (end-flg-regexp "1> ")
 	    end)
 	(goto-char (point-max))
 	(process-send-string process (format "%s ;\n" sql))
 	(process-send-string process "go\n")
-	(goto-char (point-min))
+	(goto-char start)
 	(while (not (re-search-forward end-flg-regexp nil t 1))
-	  (when (accept-process-output process sqlserver-timeout-wait-for-result 0 nil)
-	    (goto-char (point-min))))
-	(setq end (max start (1- (match-beginning 0))))
+	  (when (accept-process-output process 300 0 nil)
+	    (goto-char (+ 3 (point-min)))))
+	;; find the starting point of the query result which is everything before `row-changed-regexp'
+	(if (re-search-forward row-changed-regexp nil t -1)
+	    (setq end (max start (1- (match-beginning 0))))
+	  ;; an error occurred let's find the error message
+	  (if (re-search-forward error-msg-regexp nil t -1)
+	      (user-error "Query failed: %s" (match-string 1))
+	      (user-error "Query failed")))
 	;; (message "Count %s" (match-string 1))
 	(buffer-substring-no-properties start end)))))
 
