@@ -41,6 +41,10 @@
   "Sql Server"
   :group 'SQL)
 
+(defcustom sql-server-confirm-delete t
+  "Whether it asks to confirm execution of delete/truncate statements"
+  :group 'sql-server)
+
 (defcustom sql-server-ivy-columns-visible nil
   "Whether the table columns are currently shown in minibuffer. Dictates the available action depending on whether tables or columns are shown"
   :group 'sql-server)
@@ -169,11 +173,12 @@ machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
 (defun sql-server-send (sql)
   "Sends string `sql' to server.
 When `nocount' is t, the last line with the row count is excluded."
-  (let ((result (sql-server-get-result-list (sql-server-sanitize-query sql))))
-    (when (> (length result) 1)
-      (save-excursion (switch-to-buffer (ctbl:create-table-buffer-easy
-					 (cdr result)
-					 (car result)))))))
+  (when (or (not sql-server-confirm-delete) (not (string-match "\\<delete\\>" sql)) (yes-or-no-p "Are you sure you wish to executed this query ?"))
+    (let ((result (sql-server-get-result-list (sql-server-sanitize-query sql))))
+      (when (> (length result) 1)
+	(save-excursion (switch-to-buffer (ctbl:create-table-buffer-easy
+					   (cdr result)
+					   (car result))))))))
 
 (defun sql-server-sanitize-query (sql)
   ;; Remove empty lines as they cause additional prompt added to the result buffer
