@@ -253,7 +253,7 @@ When `nocount' is t, the last line with the row count is excluded."
     (cond ((and result-count (< (length result) 2) (eq 0 result-count))
 	   (message "No record found"))
 	  ((and result-count (< (length result) 2) (> result-count 0))
-	   (message "%s rows affected" count)))
+	   (message "%s rows affected" result-count)))
     result)
   ;; (let ((raw-lines (sql-server-get-result-lines sql)))
   ;;   (mapcar (lambda (x)
