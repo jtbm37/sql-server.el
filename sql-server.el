@@ -73,6 +73,9 @@
 (defvar sql-server-tables-cache nil
   "Holds a cache of the database tables")
 
+(defvar sql-server-sps-cache nil
+  "Holds a cache of the database stored procs")
+
 ;; (defun sql-server-comint (product options)
 ;;   "Create comint buffer and connect to Sql Server.
 ;; Command is to `isql DB username password'"
@@ -285,6 +288,24 @@ When `nocount' is t, the last line with the row count is excluded."
   (ivy-read "sql history:"
             sql-server-history
             :action 'insert))
+
+(defun sql-server-stored-procs ()
+  "Displays list of stored procs"
+  (interactive)
+  (ivy-read (format "%s sps: " sql-database)
+	    'sql-server-get-sps
+	    ;; :initial-input (unless prefix-arg
+	    ;; 		     table)
+	    :keymap sql-server-map
+	    :require-match 'confirm-after-completion
+	    :caller 'sql-server-stored-procs))
+
+(defun sql-server-get-sps (&optional input ok we)
+  "Returns list of stored procs"
+  (when (or (and current-prefix-arg (= (car current-prefix-arg) 4)) (not sql-server-sps-cache))
+    (message "Refreshing tables")
+    (setq sql-server-sps-cache (-flatten (cdr (sql-server-get-result-list "select name from sys.procedures order by name")))))
+  sql-server-sps-cache)
 
 (defun sql-server-tables (&optional table)
   "Displays list of all tables"
