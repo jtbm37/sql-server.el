@@ -98,15 +98,15 @@ machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
 	(message "sql-server connection set"))
     (user-error "Credentials not found")))
 
-
-(defun sql-server--command-args ()
+(defun sql-server--command-args (&optional leave-trailing-spaces)
   "Returns sqlcmd args preformatted for process call"
-  (list "-S" (cdr (assoc 'server sql-server-connection))
-	"-U" (cdr (assoc 'login sql-server-connection))
-	"-P" (cdr (assoc 'password sql-server-connection))
-	"-d" (cdr (assoc 'db sql-server-connection))
-	"-s" "\^E"
-	"-W"))
+  (let ((args (list "-S" (cdr (assoc 'server sql-server-connection))
+		    "-U" (cdr (assoc 'login sql-server-connection))
+		    "-P" (cdr (assoc 'password sql-server-connection))
+		    "-d" (cdr (assoc 'db sql-server-connection))
+		    "-s" "\^E")))
+    (unless leave-trailing-spaces (push "-W" args))
+    args))
 
 (defun sql-server-connect ()
   "Establishes connection to database specified in `sql-server-connection'"
@@ -123,18 +123,12 @@ machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
        (when (string-match "\\(finished\\|exited\\|exited abnormally with code\\)" change)
 	 (kill-buffer (process-buffer proc))
 	 (message (concat (process-name proc) " exited")))))
+    (when (process-live-p process)
+      (message (concat "Connected to " (cdr (assoc 'db sql-server-connection)))))
     ;; (list process
     ;; 	  (process-buffer process)
     ;; 	  connection-info)
     ))
-
-(defun sql-server-get-table-at-point (start end)
-  (interactive "r")
-  (sql-server-get-table-columns (buffer-substring-no-properties start end)))
-
-(defun sql-server-get-table-columns (table)
-  "Returns the list of columns for `table'"
-  (sql-server-send (format sql-server-ivy-table-columns-query table)))
 
 (defun sql-server-send-region (start end)
   "Send a region to the SQL process."
@@ -154,7 +148,7 @@ When `nocount' is t, the last line with the row count is excluded."
 
 (defun sql-server-sanitize-query (sql)
   ;; Remove empty lines as they cause additional prompt added to the result buffer
-  (replace-regexp-in-string "\n" " " sql)
+  (replace-regexp-in-string "^[[:blank:]]*\n" " " sql)
   ;; (let ((sql-fixed (s-trim
   ;;                   (replace-regexp-in-string "\n" " "
   ;;                                             ;;remove GOs'
@@ -226,12 +220,7 @@ When `nocount' is t, the last line with the row count is excluded."
 	   (message "No record found"))
 	  ((and result-count (< (length result) 2) (> result-count 0))
 	   (message "%s rows affected" result-count)))
-    result)
-  ;; (let ((raw-lines (sql-server-get-result-lines sql)))
-  ;;   (mapcar (lambda (x)
-  ;;             (split-string x "|"))
-  ;;           raw-lines))
-  )
+    result))
 
 (defun sql-server-get-result-value (sql)
   "Returns the result of a query which returns a single value"
@@ -244,10 +233,6 @@ When `nocount' is t, the last line with the row count is excluded."
       (insert-buffer-substring-no-properties sql-server-temp-buffer result-beg result-end)
       (goto-char (point-min))
       (buffer-substring-no-properties (point) (point-max)))))
-;; (defun sql-server-get-result-lines (sql)
-;;   "Returns a list of each output lines"
-;;   (with-current-buffer "*SQL*"
-;;     (comint-redirect-results-list sql "\\(.+\\)$" 1)))
 
 (defvar sql-server-map
   (let ((map (make-sparse-keymap)))
@@ -269,105 +254,6 @@ When `nocount' is t, the last line with the row count is excluded."
             sql-server-history
             :action 'insert))
 
-(defun sql-server-stored-procs ()
-  "Displays list of stored procs"
-  (interactive)
-  (ivy-read (format "%s sps: " sql-database)
-	    'sql-server-get-sps
-	    :action 'sql-server--display-proc
-	    :require-match 'confirm-after-completion
-	    :caller 'sql-server-stored-procs))
-
-(defun sql-server--display-proc (proc)
-  "Show stored proc in new buffer"
-  (let ((buffer (get-buffer-create (format " *proc:%s*" proc)))
-	(definition (sql-server--get-sp-definition proc)))
-    (with-current-buffer buffer
-      (delete-region (point-min) (point-max))
-      (insert definition))
-    (save-excursion (switch-to-buffer buffer)
-      (hide-ctrl-M))))
-
-(defun sql-server--get-sp-definition  (proc)
-  (sql-server-get-result-value (format "select definition from sys.all_objects as sp LEFT OUTER JOIN sys.sql_modules AS smsp ON smsp.object_id = sp.object_id where name = '%s'" proc)))
-
-
-(defun sql-server-get-sps (&optional input ok we)
-  "Returns list of stored procs"
-  (when (or (and current-prefix-arg (= (car current-prefix-arg) 4)) (not sql-server-sps-cache))
-    (message "Refreshing tables")
-    (setq sql-server-sps-cache (-flatten (cdr (sql-server-get-result-list "select name from sys.procedures order by name")))))
-  sql-server-sps-cache)
-
-(defun sql-server-tables (&optional table)
-  "Displays list of all tables"
-  (interactive)
-  (ivy-read (format "%s table: " sql-database)
-            'sql-server-get-tables
-            :initial-input (unless prefix-arg
-                             table)
-            :keymap sql-server-map
-            :require-match 'confirm-after-completion
-            :caller 'sql-server-tables
-            ))
-
-(defun sql-server-ivy-insert-where-query (selection)
-  "Inserts a query based on selection.
-If it is a column it will insert `select * from =table= where =column='.
-`selection' is either a table or a column name depending on whether `sql-server-ivy-current-table'
-is set. "
-  (if sql-server-ivy-current-table
-      (insert (format "select * from %s where %s " sql-server-ivy-current-table (get-text-property 1 'name selection)))
-    (insert (concat "select * from " selection))))
-
-(ivy-set-actions
- 'sql-server-tables
- '(("i" sql-server-ivy-insert-where-query "insert - select where")))
-
-(defun sql-server-tables-at-point  (start end)
-  "Display list of table prefiltered by selected region"
-  (interactive "r")
-  (sql-server-tables (buffer-substring-no-properties start end)))
-
-;; (defun sql-server-tablep (x)
-;;   (string= (nth 3 x) "TABLE"))
-
-(defun sql-server-get-tables (&optional input ok we)
-  (ivy--reset-tables)
-  (when (or (and current-prefix-arg (= (car current-prefix-arg) 4)) (not sql-server-tables-cache))
-    (message "Refreshing tables")
-    (setq sql-server-tables-cache (-flatten (cdr (sql-server-get-result-list "SELECT name from sys.tables order by name")))))
-  ;; (->> sql-server-tables-cache (-filter 'sql-server-tablep) (-map (lambda (x) (nth 2 x))))
-  sql-server-tables-cache)
-
-(defun sql-server-ivy-tables ()
-  (interactive)
-  (ivy--reset-tables)
-  (ivy--reset-minibuffer)
-  (setq ivy--all-candidates (sql-server-get-tables))
-
-  (ivy-set-prompt 'sql-server-tables (lambda () (ivy-add-prompt-count
-                                             (format "%stable: " "%-4d"))))
-  (setf (ivy-state-preselect ivy-last) ivy--sql-table)
-  (ivy--exhibit))
-
-(defun sql-server-ivy-table-columns (&optional arg)
-  (interactive "P")
-  (unless sql-server-ivy-columns-visible
-    (setq sql-server-ivy-columns-visible t)
-    (ivy--reset-minibuffer)
-    (setq sql-server-ivy-current-table ivy--current
-          ivy--sql-table ivy--current)
-    (ivy-set-prompt 'sql-server-tables (lambda () (ivy-add-prompt-count
-                                               (format "%s[%s] columns: " "%-4d" sql-server-ivy-current-table))))
-    (setq ivy--all-candidates (sql-server-ivy-get-table-columns ivy--current))
-    (ivy--exhibit)))
-
-(defun ivy--reset-tables ()
-  "Resets variables used by `sql-server-tables'"
-  (setq sql-server-ivy-columns-visible nil
-        sql-server-ivy-current-table nil))
-
 (defun ivy--reset-minibuffer ()
   (setq ivy--old-cands nil)
   (setq ivy--old-re nil)
@@ -375,24 +261,6 @@ is set. "
   (setq ivy--all-candidates nil)
   (setq ivy-text "")
   (delete-minibuffer-contents))
-
-(defun sql-server-ivy-get-table-columns (table)
-  "Returns a list of the table columns"
-  ;;TODO Cache it
-  (-map 'sql-server-ivy-format-table-column (cdr (sql-server-get-result-list (format "select COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME = '%s';"
-										     table)))))
-(defun sql-server-ivy-format-table-column (col)
-  "Formats ivy table columns"
-  (let* ((name (car col))
-        (length (nth 2 col))
-        (type (if (s-blank-str? length)
-                  (cadr col)
-                (format "%s(%s)" (cadr col) length))))
-    (propertize
-     (concat
-      (propertize (sql-server-ivy-align-text type 20) 'face 'font-lock-doc-face) name)
-     'name name
-     'type type)))
 
 (defun sql-server-ivy-align-text (text col-length)
   "Fills string with blank if less than length"
