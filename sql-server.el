@@ -70,40 +70,14 @@
 (defvar sql-server-sps-cache nil
   "Holds a cache of the database stored procs")
 
-;; (defun sql-server-comint (product options)
-;;   "Create comint buffer and connect to Sql Server.
-;; Command is to `isql DB username password'"
-;;   (let ((params
-;;          (append
-;; 	  (list "-S" sql-server)
-;;           (if (not (string= "" sql-database))
-;;               (list "-d" sql-database))
-;;           (if (not (string= "" sql-user))
-;;               (list "-U" sql-user))
-;;           (if (not (string= "" sql-password))
-;;               (list "-P" sql-password))
-;;           options)))
-;;     (sql-comint product params)))
-
-
 (advice-add 'sql-send-region :override #'sql-server-send-region)
-
-;; (sql-set-product-feature 'ms :sqli-program "sqlcmd")
-;; nil will not ask for any input from user and get the defaults
-;; (sql-set-product-feature 'ms :sqli-login nil)
-;; (sql-set-product-feature 'ms :sqli-options (list "-W" "-s" "	"))
-;; (sql-set-product-feature 'ms :sqli-options nil)
-;; (sql-set-product-feature 'ms :sqli-comint-func 'sql-server-comint)
-;; (sql-set-product-feature 'ms :prompt-regexp "[0-9]> ")
-;; (sql-set-product-feature 'ms :prompt-length 3)
-;; (sql-set-product-feature 'ms :terminator "go")
-;; (sql-set-product-feature 'ms :input-filter nil)
 
 (defun sql-server-input-filter (input)
   "Removes GO from input"
   ;; (replace-regexp-in-string "^go" ";" input)
   )
 
+;;;###autoload
 (defun sql-server-set-defaults ()
   "Sets default sql variable using `auth-source'.
 Add the following entry to your `.authinfo' file:
