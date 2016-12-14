@@ -179,6 +179,7 @@ When `nocount' is t, the last line with the row count is excluded."
   (when (or (not sql-server-confirm-delete) (not (string-match "\\<delete\\>" sql)) (yes-or-no-p "Are you sure you wish to executed this query ?"))
     (let ((result (sql-server-get-result-list (sql-server-sanitize-query sql))))
       (when (> (length result) 1)
+	(sql-server-add-to-history sql)
 	(save-excursion (switch-to-buffer (ctbl:create-table-buffer-easy
 					   (cdr result)
 					   (car result))))))))
