@@ -306,10 +306,7 @@ When `nocount' is t, the last line with the row count is excluded."
   (interactive)
   (ivy-read (format "%s sps: " sql-database)
 	    'sql-server-get-sps
-	    ;; :initial-input (unless prefix-arg
-	    ;; 		     table)
 	    :action 'sql-server--display-proc
-	    :keymap sql-server-map
 	    :require-match 'confirm-after-completion
 	    :caller 'sql-server-stored-procs))
 
