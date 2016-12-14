@@ -265,6 +265,17 @@ When `nocount' is t, the last line with the row count is excluded."
   ;;           raw-lines))
   )
 
+(defun sql-server-get-result-value (sql)
+  "Returns the result of a query which returns a single value"
+  (let* ((query-result (sql-server--execute-query sql))
+	 (result-beg (car query-result))
+	 (result-end (cadr query-result))
+	 (result-count (caddr query-result))
+	result row line-count)
+    (with-temp-buffer
+      (insert-buffer-substring-no-properties sql-server-temp-buffer result-beg result-end)
+      (goto-char (point-min))
+      (buffer-substring-no-properties (point) (point-max)))))
 ;; (defun sql-server-get-result-lines (sql)
 ;;   "Returns a list of each output lines"
 ;;   (with-current-buffer "*SQL*"
@@ -297,9 +308,24 @@ When `nocount' is t, the last line with the row count is excluded."
 	    'sql-server-get-sps
 	    ;; :initial-input (unless prefix-arg
 	    ;; 		     table)
+	    :action 'sql-server--display-proc
 	    :keymap sql-server-map
 	    :require-match 'confirm-after-completion
 	    :caller 'sql-server-stored-procs))
+
+(defun sql-server--display-proc (proc)
+  "Show stored proc in new buffer"
+  (let ((buffer (get-buffer-create (format " *proc:%s*" proc)))
+	(definition (sql-server--get-sp-definition proc)))
+    (with-current-buffer buffer
+      (delete-region (point-min) (point-max))
+      (insert definition))
+    (save-excursion (switch-to-buffer buffer)
+      (hide-ctrl-M))))
+
+(defun sql-server--get-sp-definition  (proc)
+  (sql-server-get-result-value (format "select definition from sys.all_objects as sp LEFT OUTER JOIN sys.sql_modules AS smsp ON smsp.object_id = sp.object_id where name = '%s'" proc)))
+
 
 (defun sql-server-get-sps (&optional input ok we)
   "Returns list of stored procs"
