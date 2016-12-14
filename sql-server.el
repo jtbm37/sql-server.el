@@ -23,12 +23,6 @@
 
 ;;; Commentary:
 
-;; NOTICE: the underlying isql program has been modified and recompiled to accomodate
-;; some requirements of this configuration. For example, in the original version if you
-;; pass a column modifier (like we do '|') then the SQLRowCount is never output. This
-;; is unfortunate and had to be changed.
-;; isql version 2.3.4 is required. http://www.unixodbc.org/
-
 ;; This package is still under heavy development and should not be
 ;; used against production sql server.
 
