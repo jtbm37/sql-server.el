@@ -281,7 +281,7 @@ When `nocount' is t, the last line with the row count is excluded."
 
 (defun sql-server-add-to-history (sql)
   "Adds query to `sql-server-history'"
-  (push sql sql-server-history))
+  (push (replace-regexp-in-string "\n" "" sql) sql-server-history))
 
 (defun sql-server-show-history ()
   "Shows previous sql executed"
