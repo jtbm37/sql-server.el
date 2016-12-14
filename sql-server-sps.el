@@ -19,19 +19,18 @@ from being truncated."
 
 (defun sql-server--display-proc (proc)
   "Show stored proc in new buffer"
-  (let ((buffer (get-buffer-create (format " *proc:%s*" proc)))
+  (let ((buffer (get-buffer-create (format "proc:%s" proc)))
 	(definition (sql-server--get-sp-definition proc)))
     (with-current-buffer buffer
       (delete-region (point-min) (point-max))
       (insert definition)
-      ;; (goto-line 3)
-      ;; (delete-region (point-min) (point))
       (goto-line (count-lines (point-min) (point-max)))
       (kill-whole-line)
       (beginning-of-buffer)
       (replace-regexp "" "")
       (beginning-of-buffer))
-    (save-excursion (switch-to-buffer buffer))))
+    (save-excursion (switch-to-buffer buffer)
+		    (sql-mode))))
 
 ;;;###autoload
 (defun sql-server-stored-procs ()
