@@ -145,6 +145,13 @@ When `nocount' is t, the last line with the row count is excluded."
 	(save-excursion (switch-to-buffer (ctbl:create-table-buffer-easy
 					   (cdr result)
 					   (car result))))))))
+;;;###autoload
+(defun sql-server-send-buffer ()
+  "Sends current buffer file to server."
+  (interactive)
+  (let* ((args (-reduce (lambda (x y) (format "%s %s" x y)) (sql-server--command-args t)))
+	(cmd (format "sqlcmd %s -i \"%s\""args (buffer-file-name))))
+    (shell-command cmd)))
 
 (defun sql-server-sanitize-query (sql)
   ;; Remove empty lines as they cause additional prompt added to the result buffer
