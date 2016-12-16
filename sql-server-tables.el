@@ -57,18 +57,19 @@
 (defun sql-server-ivy-get-table-columns (table)
   "Returns a list of the table columns"
   ;;TODO Cache it
-  (-map 'sql-server-ivy-format-table-column (cdr (sql-server-get-result-list (format "select COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME = '%s';"
+  (-map 'sql-server-ivy-format-table-column (cdr (sql-server-get-result-list (format "select COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, IS_NULLABLE from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME = '%s';"
 										     table)))))
 (defun sql-server-ivy-format-table-column (col)
   "Formats ivy table columns"
   (let* ((name (car col))
-        (length (nth 2 col))
-        (type (if (s-blank-str? length)
-                  (cadr col)
-                (format "%s(%s)" (cadr col) length))))
+	 (length (nth 2 col))
+	 (nullable (string= "YES" (nth 3 col)))
+	 (type (if (string= "NULL" length)
+		   (cadr col)
+		 (format "%s(%s)" (cadr col) length))))
     (propertize
      (concat
-      (propertize (sql-server-ivy-align-text type 20) 'face 'font-lock-doc-face) name)
+      name (format " (%s,%snull)" (propertize type 'face 'font-lock-doc-face) (if nullable " not " " ")))
      'name name
      'type type)))
 
