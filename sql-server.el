@@ -104,7 +104,8 @@ machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
 		    "-U" (cdr (assoc 'login sql-server-connection))
 		    "-P" (cdr (assoc 'password sql-server-connection))
 		    "-d" (cdr (assoc 'db sql-server-connection))
-		    "-s" "\^E")))
+		    "-s" "\^E"
+		    "-I")))
     (unless leave-trailing-spaces (push "-W" args))
     args))
 
