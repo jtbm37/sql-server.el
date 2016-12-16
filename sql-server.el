@@ -146,11 +146,14 @@ When `nocount' is t, the last line with the row count is excluded."
 					   (cdr result)
 					   (car result))))))))
 ;;;###autoload
-(defun sql-server-send-buffer ()
-  "Sends current buffer file to server."
+(defun sql-server-send-buffer (&optional file)
+  "Sends buffer to server.
+When FILE is not set it will default to current buffer."
   (interactive)
+  (unless file
+    (setq file (buffer-file-name)))
   (let* ((args (-reduce (lambda (x y) (format "%s %s" x y)) (sql-server--command-args t)))
-	(cmd (format "sqlcmd %s -i \"%s\""args (buffer-file-name))))
+	 (cmd (format "sqlcmd %s -i \"%s\""args file)))
     (shell-command cmd)))
 
 (defun sql-server-sanitize-query (sql)
