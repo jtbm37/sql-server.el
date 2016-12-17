@@ -185,7 +185,7 @@ When FILE is not set it will default to current buffer."
 	    (row-changed-regexp "(\\([0-9]+\\) rows affected)")
 	    (error-msg-regexp "Msg [0-9]+, Level [0-9]+, State [0-9]+, Server .+, Line [0-9]+
 \\(.*\\)$")
-	    (end-flg-regexp "1> ")
+	    (end-flg-regexp "^1> ")
 	    end
 	    (count 0))
 	(goto-char (point-max))
