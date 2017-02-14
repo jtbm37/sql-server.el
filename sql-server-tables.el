@@ -69,7 +69,7 @@
 		 (format "%s(%s)" (cadr col) length))))
     (propertize
      (concat
-      name (format " (%s,%snull)" (propertize type 'face 'font-lock-doc-face) (if nullable " not " " ")))
+      name (format " (%s,%snull)" (propertize type 'face 'font-lock-doc-face) (if nullable " " " not ")))
      'name name
      'type type)))
 
