@@ -125,11 +125,9 @@ machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
 	 (kill-buffer (process-buffer proc))
 	 (message (concat (process-name proc) " exited")))))
     (when (process-live-p process)
-      (message (concat "Connected to " (cdr (assoc 'db sql-server-connection)))))
-    ;; (list process
-    ;; 	  (process-buffer process)
-    ;; 	  connection-info)
-    ))
+      (let ((db (cdr (assoc 'db sql-server-connection))))
+	(message (concat "Connected to " db))
+	(sql-server-set-header-line-format db)))))
 
 (defun sql-server-send-region (start end)
   "Send a region to the SQL process."
@@ -276,6 +274,27 @@ When FILE is not set it will default to current buffer."
 (defun sql-server-ivy-align-text (text col-length)
   "Fills string with blank if less than length"
   (s-pad-right col-length " " text))
+
+(defun sql-server-set-header-line-format (string)
+  "Set the header-line using STRING."
+  (let* ((header-line
+          (concat (propertize " "
+                              'display
+                              '(space :align-to 0))
+                  string
+                  (propertize
+                   " "
+                   'display
+                   `(space :width (+ left-fringe
+                                     left-margin
+                                     ,@(and (eq (car (window-current-scroll-bars))
+                                                'left)
+                                            '(scroll-bar)))))))
+         (len (length header-line)))
+    (setq header-line-format
+          (propertize header-line
+                      'face
+                      'magit-header-line))))
 
 (provide 'sql-server)
 ;;; sql-server.el ends here
