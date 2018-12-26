@@ -47,7 +47,8 @@
   '((login . nil)
     (password . nil)
     (server . nil)
-    (db . nil))
+    (db . nil)
+    (port . nil))
   "sql-server connection details"
   :group 'sql-server
   :type 'alist)
@@ -78,16 +79,17 @@
   )
 
 ;;;###autoload
-(defun sql-server-set-defaults ()
+(defun sql-server-set-defaults (entry)
   "Sets default sql variable using `auth-source'.
 Add the following entry to your `.authinfo' file:
 machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
 "
   (interactive)
-  (-if-let* ((entry (nth 0 (auth-source-search :max 1 :host "sqllocal")))
+  (-if-let* (;; (entry (nth 0 (auth-source-search :max 1 :host "sqllocal")))
          (login (plist-get entry :user))
          (server (plist-get entry :server))
          (db (plist-get entry :db))
+	 (port (or (plist-get entry :port) 1433))
          (secretfun (plist-get entry :secret))
          (secret (funcall secretfun)))
       (progn
@@ -95,15 +97,16 @@ machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
 	(setcdr  (assoc 'password sql-server-connection) secret)
 	(setcdr  (assoc 'db sql-server-connection) db)
 	(setcdr  (assoc 'server sql-server-connection) server)
+	(setcdr  (assoc 'port sql-server-connection) port)
 	(message "sql-server connection set"))
     (user-error "Credentials not found")))
 
 (defun sql-server--command-args (&optional leave-trailing-spaces)
   "Returns sqlcmd args preformatted for process call"
-  (let ((args (list "-S" (cdr (assoc 'server sql-server-connection))
-		    "-U" (cdr (assoc 'login sql-server-connection))
-		    "-P" (cdr (assoc 'password sql-server-connection))
-		    "-d" (cdr (assoc 'db sql-server-connection))
+  (let ((args (list "-S" (format "%s,%s" (alist-get 'server sql-server-connection) (alist-get 'port sql-server-connection))
+		    "-U" (alist-get 'login sql-server-connection)
+		    "-P" (alist-get 'password sql-server-connection)
+		    "-d" (alist-get 'db sql-server-connection)
 		    "-s" "\^E"
 		    "-I")))
     (unless leave-trailing-spaces (push "-W" args))
@@ -112,6 +115,12 @@ machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
 (defun sql-server-connect ()
   "Establishes connection to database specified in `sql-server-connection'"
   (interactive)
+  (unless (alist-get 'login sql-server-connection)
+    (let ((dbs (mapcar (lambda (x) (propertize (plist-get x :db) 'value x)) (auth-source-search :max 50 :require '(:db)))))
+      (ivy-read "Connect to: "
+		dbs
+		:require-match 'confirm-after-completion
+		:action (lambda (x) (sql-server-set-defaults (get-text-property 1 'value x))))))
   (let ((process (apply 'start-process ;; dino
 		  "sql-server"
 		  sql-server-temp-buffer
