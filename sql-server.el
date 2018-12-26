@@ -263,7 +263,9 @@ When FILE is not set it will default to current buffer."
 
 (defun sql-server-add-to-history (sql)
   "Adds query to `sql-server-history'"
-  (push (replace-regexp-in-string "\n" "" sql) sql-server-history))
+  (let ((sql (replace-regexp-in-string "\n" "" sql)))
+    (when (not (-any? (lambda (x) (string-equal x sql)) sql-server-history))
+      (push sql sql-server-history))))
 
 (defun sql-server-show-history ()
   "Shows previous sql executed"
