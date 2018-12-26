@@ -45,7 +45,9 @@
   "Whether the table columns are currently shown in minibuffer. Dictates the available action depending on whether tables or columns are shown"
   :group 'sql-server)
 
-(defcustom sql-server-connection
+(defcustom sql-server-sqlcmd "/opt/mssql-tools/bin/sqlcmd"
+  "Holds the path of the `sqlcmd' executable"
+  :group 'sql-server)
 
 (setq-default sql-server-connection
   '((login . nil)
@@ -146,7 +148,7 @@ the `db' record."
 	   (process (apply 'start-process ;; dino
 			   "sql-server"
 			   buffer-name
-			   "/opt/mssql-tools/bin/sqlcmd"
+			   sql-server-sqlcmd
 			   (sql-server--command-args))))
       (setq sql-server-temp-buffer buffer-name)
       (set-process-query-on-exit-flag process nil)
