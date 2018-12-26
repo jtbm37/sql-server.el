@@ -30,7 +30,9 @@
 (require 's)
 (require 'ctable)
 
-(defconst sql-server-temp-buffer " *TEMP SQL*")
+(setq-default sql-server-temp-buffer nil)
+
+(defvar sql-server-temp-buffer-name " *TEMP SQL - %s*")
 (defgroup sql-server nil
   "Sql Server"
   :group 'SQL)
@@ -44,14 +46,13 @@
   :group 'sql-server)
 
 (defcustom sql-server-connection
+
+(setq-default sql-server-connection
   '((login . nil)
     (password . nil)
     (server . nil)
     (db . nil)
-    (port . nil))
-  "sql-server connection details"
-  :group 'sql-server
-  :type 'alist)
+    (port . nil)))
 
 (defconst sql-server-ivy-table-columns-query "select COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, CHARACTER_MAXIMUM_LENGTH from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME = '%s';"
   "Defines the query to retrieve the columns of a table")
@@ -73,33 +74,37 @@
 
 (advice-add 'sql-send-region :override #'sql-server-send-region)
 
-(defun sql-server-input-filter (input)
-  "Removes GO from input"
-  ;; (replace-regexp-in-string "^go" ";" input)
-  )
-
 ;;;###autoload
 (defun sql-server-set-defaults (entry)
   "Sets default sql variable using `auth-source'.
 Add the following entry to your `.authinfo' file:
-machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
+machine someName login `your_login' db `your_database' password `your_password' server `server_address'
 "
   (interactive)
-  (-if-let* (;; (entry (nth 0 (auth-source-search :max 1 :host "sqllocal")))
-         (login (plist-get entry :user))
-         (server (plist-get entry :server))
-         (db (plist-get entry :db))
-	 (port (or (plist-get entry :port) 1433))
-         (secretfun (plist-get entry :secret))
-         (secret (funcall secretfun)))
+  (-if-let* ((login (plist-get entry :user))
+	     (server (plist-get entry :server))
+	     (db (plist-get entry :db))
+	     (port (or (plist-get entry :port) 1433))
+	     (secretfun (plist-get entry :secret))
+	     (secret (funcall secretfun)))
       (progn
-	(setcdr  (assoc 'login sql-server-connection) login)
-	(setcdr  (assoc 'password sql-server-connection) secret)
-	(setcdr  (assoc 'db sql-server-connection) db)
-	(setcdr  (assoc 'server sql-server-connection) server)
-	(setcdr  (assoc 'port sql-server-connection) port)
+	(setq-local sql-server-connection `((login . ,login)
+					    (db . ,db)
+					    (port . ,port)
+					    (server . ,server)
+					    (password . ,secret)))
 	(message "sql-server connection set"))
     (user-error "Credentials not found")))
+
+(defun sql-server-reset-connection ()
+  (sql-server-disconnect)
+  (setq-local sql-server-connection '((login . nil)
+				      (password . nil)
+				      (server . nil)
+				      (db . nil)
+				      (port . nil))
+	      header-line-format nil)
+  (message "Connection reset"))
 
 (defun sql-server--command-args (&optional leave-trailing-spaces)
   "Returns sqlcmd args preformatted for process call"
@@ -112,31 +117,55 @@ machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
     (unless leave-trailing-spaces (push "-W" args))
     args))
 
-(defun sql-server-connect ()
-  "Establishes connection to database specified in `sql-server-connection'"
-  (interactive)
+(defun sql-server-connect (&rest arg)
+  "Establishes connection to database specified in `sql-server-connection'.
+Call it with a prefix to create a new connection.
+It will fetch connection details from `.authinfo' and prompt to choose one of
+the `db' record."
+  (interactive "p")
+
+  (unless (local-variable-p 'sql-server-connection)
+    (make-local-variable 'sql-server-connection))
+  (unless (local-variable-p 'sql-server-temp-buffer)
+    (make-local-variable 'sql-server-temp-buffer))
+
+  (when (equal arg '(4))
+    (sql-server-reset-connection))
+  
   (unless (alist-get 'login sql-server-connection)
-    (let ((dbs (mapcar (lambda (x) (propertize (plist-get x :db) 'value x)) (auth-source-search :max 50 :require '(:db)))))
+    (let ((dbs (mapcar (lambda (x) (propertize (plist-get x :db) 'value x))
+		       (auth-source-search :max 50 :require '(:db)))))
       (ivy-read "Connect to: "
 		dbs
 		:require-match 'confirm-after-completion
 		:action (lambda (x) (sql-server-set-defaults (get-text-property 1 'value x))))))
-  (let ((process (apply 'start-process ;; dino
-		  "sql-server"
-		  sql-server-temp-buffer
-		  "sqlcmd"
-		  (sql-server--command-args))))
-    (set-process-query-on-exit-flag process nil)
-    (set-process-sentinel
-     process
-     (lambda (proc change)
-       (when (string-match "\\(finished\\|exited\\|exited abnormally with code\\)" change)
-	 (kill-buffer (process-buffer proc))
-	 (message (concat (process-name proc) " exited")))))
-    (when (process-live-p process)
-      (let ((db (cdr (assoc 'db sql-server-connection))))
-	(message (concat "Connected to " db))
-	(sql-server-set-header-line-format db)))))
+  (if-let (get-buffer-process sql-server-temp-buffer)
+      (user-error "Already connected to %s." (alist-get 'db sql-server-connection))
+    (let* ((db (alist-get 'db sql-server-connection))
+	   (buffer-name (format sql-server-temp-buffer-name db))
+	   (process (apply 'start-process ;; dino
+			   "sql-server"
+			   buffer-name
+			   "/opt/mssql-tools/bin/sqlcmd"
+			   (sql-server--command-args))))
+      (setq sql-server-temp-buffer buffer-name)
+      (set-process-query-on-exit-flag process nil)
+      (set-process-sentinel
+       process
+       (lambda (proc change)
+	 (when (string-match "\\(finished\\|exited\\|exited abnormally with code\\)" change)
+	   (kill-buffer (process-buffer proc))
+	   (message (concat (process-name proc) " exited")))))
+      (when (process-live-p process)
+	(let ((db (cdr (assoc 'db sql-server-connection))))
+	  (message (concat "Connected to " db))
+	  (sql-server-set-header-line-format db))))))
+
+(defun sql-server-disconnect ()
+  "Disconnects from current connection associated with buffer."
+  (let ((process (get-buffer-process sql-server-temp-buffer)))
+    (when process
+      (kill-buffer (process-buffer process)))))
 
 (defun sql-server-send-region (start end)
   "Send a region to the SQL process."
@@ -166,17 +195,7 @@ When FILE is not set it will default to current buffer."
 
 (defun sql-server-sanitize-query (sql)
   ;; Remove empty lines as they cause additional prompt added to the result buffer
-  (replace-regexp-in-string "^[[:blank:]]*\n" " " sql)
-  ;; (let ((sql-fixed (s-trim
-  ;;                   (replace-regexp-in-string "\n" " "
-  ;;                                             ;;remove GOs'
-  ;;                                             (replace-regexp-in-string "^go\w*$" ""
-  ;;                                                                       ;; delete comments
-  ;;                                                                       (replace-regexp-in-string "^--.*$" "" sql))))))
-  ;;   (unless (s-suffix? ";" sql-fixed)
-  ;;     (setq sql-fixed (concat sql-fixed ";")))
-  ;;   sql-fixed)
-  )
+  (replace-regexp-in-string "^[[:blank:]]*\n" " " sql))
 
 (defun sql-server--execute-query (sql)
   "Returns a list with 3 elements:
@@ -222,16 +241,17 @@ When FILE is not set it will default to current buffer."
 	 (result-end (cadr query-result))
 	 (result-count (caddr query-result))
 	result row line-count)
-    (with-temp-buffer
-      (insert-buffer-substring-no-properties sql-server-temp-buffer result-beg result-end)
-      (setq line-count (count-lines (point-min) (point-max)))
-      (goto-char (point-min))
-      (when (> line-count 1)
-	(while (<= (line-number-at-pos) line-count)
-	  (setq row (split-string (buffer-substring-no-properties
-				   (point-at-bol) (point-at-eol)) "\^E" t))
-	  (setq result (append result (list row)))
-	  (forward-line))))
+    (let ((temp-buffer sql-server-temp-buffer))
+     (with-temp-buffer
+       (insert-buffer-substring-no-properties temp-buffer result-beg result-end)
+       (setq line-count (count-lines (point-min) (point-max)))
+       (goto-char (point-min))
+       (when (> line-count 1)
+	 (while (<= (line-number-at-pos) line-count)
+	   (setq row (split-string (buffer-substring-no-properties
+				    (point-at-bol) (point-at-eol)) "\^E" t))
+	   (setq result (append result (list row)))
+	   (forward-line)))))
     (when (and result (> (length result) 1))
       (setcdr result (cddr result)))
     (cond ((and result-count (< (length result) 2) (eq 0 result-count))
