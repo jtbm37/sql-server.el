@@ -181,7 +181,7 @@ When `nocount' is t, the last line with the row count is excluded."
     (let ((result (sql-server-get-result-list (sql-server-sanitize-query sql))))
       (when (> (length result) 1)
 	(sql-server-add-to-history sql)
-	(save-excursion (switch-to-buffer (ctbl:create-table-buffer-easy
+	(save-excursion (display-buffer (ctbl:create-table-buffer-easy
 					   (cdr result)
 					   (car result))))))))
 ;;;###autoload
