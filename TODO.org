@@ -1,3 +1,4 @@
 * TODO In query result, create ace mode for jumping to column 
   This then allow the possibility for yanking it by pressing n
 * TODO When quitting window, prompt whether to kill related process buffer
+* TODO Add history file to store executed queries between sessions
