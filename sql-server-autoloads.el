@@ -3,21 +3,30 @@
 ;;; Code:
 
 
-;;;### (autoloads nil "sql-server" "sql-server.el" (22611 8043 802434
-;;;;;;  285000))
+;;;### (autoloads nil "sql-server" "sql-server.el" (23590 3971 202273
+;;;;;;  419000))
 ;;; Generated autoloads from sql-server.el
 
 (autoload 'sql-server-set-defaults "sql-server" "\
 Sets default sql variable using `auth-source'.
 Add the following entry to your `.authinfo' file:
-machine sqllocal login `yourlogin' db `yourdatabase' password `yourpassword'
+machine someName login `your_login' db `your_database' password `your_password' server `server_address'
 
-\(fn)" t nil)
+\(fn ENTRY)" t nil)
+
+(autoload 'sql-server-connect "sql-server" "\
+Establishes connection to database specified in `sql-server-connection'.
+Call it with a prefix to create a new connection.
+It will fetch connection details from `.authinfo' and prompt to choose one of
+the `db' record.
+
+\(fn &rest ARG)" t nil)
 
 (autoload 'sql-server-send-buffer "sql-server" "\
-Sends current buffer file to server.
+Sends buffer to server.
+When FILE is not set it will default to current buffer.
 
-\(fn)" t nil)
+\(fn &optional FILE)" t nil)
 
 (if (fboundp 'register-definition-prefixes) (register-definition-prefixes "sql-server" '(#("sql-server-" 0 11 (fontified nil)) #("ivy--" 0 5 (fontified nil)))))
 
