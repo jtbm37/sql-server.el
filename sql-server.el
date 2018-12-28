@@ -104,8 +104,8 @@ machine someName login `your_login' db `your_database' password `your_password' 
 				      (password . nil)
 				      (server . nil)
 				      (db . nil)
-				      (port . nil))
-	      header-line-format nil)
+				      (port . nil)))
+  (setq header-line-format nil)
   (message "Connection reset"))
 
 (defun sql-server--command-args (&optional leave-trailing-spaces)
@@ -141,7 +141,7 @@ the `db' record."
 		dbs
 		:require-match 'confirm-after-completion
 		:action (lambda (x) (sql-server-set-defaults (get-text-property 1 'value x))))))
-  (if-let (get-buffer-process sql-server-temp-buffer)
+  (if-let ((process (get-buffer-process sql-server-temp-buffer)))
       (user-error "Already connected to %s." (alist-get 'db sql-server-connection))
     (let* ((db (alist-get 'db sql-server-connection))
 	   (buffer-name (format sql-server-temp-buffer-name db))
