@@ -119,6 +119,7 @@ machine someName login `your_login' db `your_database' password `your_password' 
     (unless leave-trailing-spaces (push "-W" args))
     args))
 
+;;;###autoload
 (defun sql-server-connect (&rest arg)
   "Establishes connection to database specified in `sql-server-connection'.
 Call it with a prefix to create a new connection.
