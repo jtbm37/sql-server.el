@@ -2,3 +2,4 @@
   This then allow the possibility for yanking it by pressing n
 * TODO When quitting window, prompt whether to kill related process buffer
 * TODO Add history file to store executed queries between sessions
+* TODO Fix issue with SQL being echo'ed in minibuffer when selecting table column
