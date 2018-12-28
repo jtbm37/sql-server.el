@@ -12,6 +12,7 @@
 (defun sql-server-tables (&optional table)
   "Displays list of all tables"
   (interactive)
+  (setq sql-server--ivy-current-buffer (buffer-name))
   (ivy-read (format "%s table: " sql-database)
             'sql-server-get-tables
             :initial-input (unless prefix-arg
@@ -37,11 +38,12 @@
   (unless sql-server-ivy-columns-visible
     (setq sql-server-ivy-columns-visible t)
     (ivy--reset-minibuffer)
-    (setq sql-server-ivy-current-table ivy--current
-          ivy--sql-table ivy--current)
-    (ivy-set-prompt 'sql-server-tables (lambda () (ivy-add-prompt-count
-                                               (format "%s[%s] columns: " "%-4d" sql-server-ivy-current-table))))
-    (setq ivy--all-candidates (sql-server-ivy-get-table-columns ivy--current))
+    (setq sql-server-ivy-current-table (ivy-state-current ivy-last)
+          ivy--sql-table (ivy-state-current ivy-last))
+    ;; (ivy-set-prompt 'sql-server-tables (lambda () (ivy-add-prompt-count
+    ;; 						   (format "%s[%s] columns: " "%-4d" sql-server-ivy-current-table))))
+    (ivy-set-prompt 'sql-server-tables (lambda () sql-server-ivy-current-table))
+    (setq ivy--all-candidates (sql-server-ivy-get-table-columns (ivy-state-current ivy-last)))
     (ivy--exhibit)))
 
 (defun ivy--reset-tables ()
@@ -57,8 +59,10 @@
 (defun sql-server-ivy-get-table-columns (table)
   "Returns a list of the table columns"
   ;;TODO Cache it
-  (-map 'sql-server-ivy-format-table-column (cdr (sql-server-get-result-list (format "select COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, IS_NULLABLE from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME = '%s';"
-										     table)))))
+  (with-current-buffer sql-server--ivy-current-buffer
+      (let ((result (cdr (sql-server-get-result-list (format "select COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, IS_NULLABLE from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME = '%s';" table)))))
+	(-map 'sql-server-ivy-format-table-column result))))
+
 (defun sql-server-ivy-format-table-column (col)
   "Formats ivy table columns"
   (let* ((name (car col))
